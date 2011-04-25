@@ -35,8 +35,8 @@ pkglib_LTLIBRARIES = \
 	libmm-plugin-anydata.la \
 	libmm-plugin-simtech.la \
 	libmm-plugin-x22x.la \
-	libmm-plugin-linktop.la
-
+	libmm-plugin-linktop.la \
+	libmm-plugin-samsung_lte.la
 # Generic
 
 libmm_plugin_generic_la_SOURCES = \
@@ -335,13 +335,32 @@ libmm_plugin_linktop_la_LDFLAGS = \
 	-module \
 	-avoid-version
 
+# Samsung LTE
+
+libmm_plugin_samsung_lte_la_SOURCES = \
+	mm-plugin-samsung.c \
+	mm-plugin-samsung-lte.h \
+	mm-modem-samsung-lte.c \
+	mm-modem-samsung-lte.h
+
+libmm_plugin_samsung_lte_la_CPPFLAGS = \
+	$(MM_CFLAGS) \
+	$(GUDEV_CFLAGS) \
+	-I$(top_srcdir)/src
+
+libmm_plugin_samsung_lte_la_LDFLAGS = \
+	$(GUDEV_LDFLAGS) \
+	-module \
+	-avoid-version
+
 udevrulesdir = $(UDEV_BASE_DIR)/rules.d
 udevrules_DATA = \
 	77-mm-ericsson-mbm.rules \
 	77-mm-zte-port-types.rules \
 	77-mm-longcheer-port-types.rules \
 	77-mm-simtech-port-types.rules \
-	77-mm-x22x-port-types.rules
+	77-mm-x22x-port-types.rules \
+	77-mm-samsung-lte.rules
 
 BUILT_SOURCES = \
 	mm-modem-gsm-hso-glue.h
