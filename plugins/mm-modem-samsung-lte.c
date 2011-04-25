@@ -258,6 +258,12 @@ get_property (GObject *object, guint prop_id,
     case MM_GENERIC_GSM_PROP_INIT_CMD:
         g_value_set_string (value, "E0");
         break;
+    case MM_GENERIC_GSM_PROP_INIT_CMD_OPTIONAL:
+        g_value_set_string (value, "+CFUN=5");
+        break;
+    case MM_GENERIC_GSM_PROP_POWER_UP_CMD:
+        g_value_set_string (value, "AT+MODESELECT=3");
+        break;
     default:
         break;
     }
@@ -285,5 +291,10 @@ mm_modem_samsung_lte_class_init (MMModemSamsungLteClass *klass)
     g_object_class_override_property (object_class,
                                       MM_GENERIC_GSM_PROP_INIT_CMD,
                                       MM_GENERIC_GSM_INIT_CMD);
-
+    g_object_class_override_property (object_class,
+                                      MM_GENERIC_GSM_PROP_INIT_CMD_OPTIONAL,
+                                      MM_GENERIC_GSM_INIT_CMD_OPTIONAL);
+    g_object_class_override_property (object_class,
+                                      MM_GENERIC_GSM_PROP_POWER_UP_CMD,
+                                      MM_GENERIC_GSM_POWER_UP_CMD);
 }
