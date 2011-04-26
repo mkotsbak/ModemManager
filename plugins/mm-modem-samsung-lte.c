@@ -216,6 +216,131 @@ simple_connect (MMModemSimple *simple,
     parent_iface->connect (MM_MODEM_SIMPLE (simple), properties, callback, info);
 }
 
+static void
+get_allowed_mode_done (MMAtSerialPort *port,
+                       GString *response,
+                       GError *error,
+                       gpointer user_data)
+{
+    MMCallbackInfo *info = (MMCallbackInfo *) user_data;
+    GRegex *r = NULL;
+    GMatchInfo *match_info;
+
+    info->error = mm_modem_check_removed (info->modem, error);
+    if (info->error)
+        goto done;
+
+    r = g_regex_new ("+MODESELECT:(\\d+)$", 0, 0, NULL);
+    if (!r) {
+        info->error = g_error_new_literal (MM_MODEM_ERROR,
+                                           MM_MODEM_ERROR_GENERAL,
+                                           "Failed to parse the allowed mode response");
+        goto done;
+    }
+
+    if (g_regex_match_full (r, response->str, response->len, 0, 0, &match_info, &info->error)) {
+        MMModemGsmAllowedMode mode = MM_MODEM_GSM_ALLOWED_MODE_ANY;
+        char *str;
+
+        str = g_match_info_fetch (match_info, 1);
+        switch (atoi (str)) {
+        case 0:
+            // mode = MM_MODEM_GSM_ALLOWED_MODE_3G_PREFERRED;
+        case 1:
+            // mode = MM_MODEM_GSM_ALLOWED_MODE_3G_ONLY;
+        case 2:
+            // mode = MM_MODEM_GSM_ALLOWED_MODE_2G_ONLY;
+        case 3:
+        case 4:
+            //            mode = MM_MODEM_GSM_ALLOWED_MODE_2G_PREFERRED;
+            mode = MM_MODEM_GSM_ALLOWED_MODE_ANY;
+            break;
+
+        default:
+            info->error = g_error_new (MM_MODEM_ERROR,
+                                       MM_MODEM_ERROR_GENERAL,
+                                       "Failed to parse the allowed mode response: '%s'",
+                                       response->str);
+            break;
+        }
+        g_free (str);
+
+        mm_callback_info_set_result (info, GUINT_TO_POINTER (mode), NULL);
+    }
+
+done:
+    if (r)
+        g_regex_unref (r);
+    mm_callback_info_schedule (info);
+}
+
+static void
+get_allowed_mode (MMGenericGsm *gsm,
+                  MMModemUIntFn callback,
+                  gpointer user_data)
+{
+    MMCallbackInfo *info;
+    MMAtSerialPort *primary;
+
+    info = mm_callback_info_uint_new (MM_MODEM (gsm), callback, user_data);
+
+    primary = mm_generic_gsm_get_at_port (gsm, MM_PORT_TYPE_PRIMARY);
+
+    mm_at_serial_port_queue_command (primary, "+MODESELECT?", 3, get_allowed_mode_done, info);
+}
+
+static void
+set_allowed_mode_done (MMAtSerialPort *port,
+                       GString *response,
+                       GError *error,
+                       gpointer user_data)
+{
+    MMCallbackInfo *info = (MMCallbackInfo *) user_data;
+
+    if (error)
+        info->error = g_error_copy (error);
+
+   mm_callback_info_schedule (info);
+}
+
+static void
+set_allowed_mode (MMGenericGsm *gsm,
+                  MMModemGsmAllowedMode mode,
+                  MMModemFn callback,
+                  gpointer user_data)
+{
+    MMCallbackInfo *info;
+    MMAtSerialPort *primary;
+    char *command;
+    int idx = 0;
+
+    info = mm_callback_info_new (MM_MODEM (gsm), callback, user_data);
+
+    primary = mm_generic_gsm_get_at_port (gsm, MM_PORT_TYPE_PRIMARY);
+    if (mm_port_get_connected (MM_PORT (primary))) {
+        g_set_error_literal (&info->error, MM_MODEM_ERROR, MM_MODEM_ERROR_CONNECTED,
+                             "Cannot perform this operation while connected");
+        mm_callback_info_schedule (info);
+        return;
+    }
+
+    switch (mode) {
+    case MM_MODEM_GSM_ALLOWED_MODE_2G_ONLY:
+    case MM_MODEM_GSM_ALLOWED_MODE_3G_ONLY:
+    case MM_MODEM_GSM_ALLOWED_MODE_2G_PREFERRED:
+    case MM_MODEM_GSM_ALLOWED_MODE_3G_PREFERRED:
+    case MM_MODEM_GSM_ALLOWED_MODE_ANY:
+    default:
+        idx = 3;
+        break;
+    }
+
+    command = g_strdup_printf ("+MODESELECT=%d", idx);
+    mm_at_serial_port_queue_command (primary, command, 3, set_allowed_mode_done, info);
+    g_free (command);
+}
+
+
 /*****************************************************************************/
 
 static void
@@ -258,12 +383,17 @@ get_property (GObject *object, guint prop_id,
     case MM_GENERIC_GSM_PROP_INIT_CMD:
         g_value_set_string (value, "E0");
         break;
+
+        /*
     case MM_GENERIC_GSM_PROP_INIT_CMD_OPTIONAL:
         g_value_set_string (value, "+CFUN=5");
         break;
+        */
+
     case MM_GENERIC_GSM_PROP_POWER_UP_CMD:
-        g_value_set_string (value, "AT+MODESELECT=3");
+        g_value_set_string (value, "+CFUN=5");
         break;
+
     default:
         break;
     }
@@ -281,6 +411,8 @@ mm_modem_samsung_lte_class_init (MMModemSamsungLteClass *klass)
     object_class->dispose = dispose;
     object_class->get_property = get_property;
     object_class->set_property = set_property;
+    gsm_class->set_allowed_mode = set_allowed_mode;
+    gsm_class->get_allowed_mode = get_allowed_mode;
     //gsm_class->do_enable_power_up_done = real_do_enable_power_up_done;
     // gsm_class->set_allowed_mode = set_allowed_mode;
     // gsm_class->get_allowed_mode = get_allowed_mode;
@@ -291,9 +423,11 @@ mm_modem_samsung_lte_class_init (MMModemSamsungLteClass *klass)
     g_object_class_override_property (object_class,
                                       MM_GENERIC_GSM_PROP_INIT_CMD,
                                       MM_GENERIC_GSM_INIT_CMD);
+    /*
     g_object_class_override_property (object_class,
                                       MM_GENERIC_GSM_PROP_INIT_CMD_OPTIONAL,
                                       MM_GENERIC_GSM_INIT_CMD_OPTIONAL);
+    */
     g_object_class_override_property (object_class,
                                       MM_GENERIC_GSM_PROP_POWER_UP_CMD,
                                       MM_GENERIC_GSM_POWER_UP_CMD);
