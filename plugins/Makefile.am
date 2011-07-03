@@ -37,6 +37,7 @@ pkglib_LTLIBRARIES = \
 	libmm-plugin-x22x.la \
 	libmm-plugin-linktop.la \
 	libmm-plugin-samsung.la \
+	libmm-plugin-samsung_lte.la \
 	libmm-plugin-wavecom.la \
 	libmm-plugin-cinterion.la
 
@@ -358,6 +359,7 @@ libmm_plugin_linktop_la_LDFLAGS = \
 	-module \
 	-avoid-version
 
+<<<<<<< HEAD
 # Samsung modem
 
 libmm_plugin_samsung_la_SOURCES = \
@@ -367,10 +369,22 @@ libmm_plugin_samsung_la_SOURCES = \
 	mm-modem-samsung-gsm.h
 
 libmm_plugin_samsung_la_CPPFLAGS = \
+=======
+# Samsung LTE
+
+libmm_plugin_samsung_lte_la_SOURCES = \
+	mm-plugin-samsung.c \
+	mm-plugin-samsung-lte.h \
+	mm-modem-samsung-lte.c \
+	mm-modem-samsung-lte.h
+
+libmm_plugin_samsung_lte_la_CPPFLAGS = \
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
 	$(MM_CFLAGS) \
 	$(GUDEV_CFLAGS) \
 	-I$(top_srcdir)/src
 
+<<<<<<< HEAD
 libmm_plugin_samsung_la_LDFLAGS = \
 	$(GUDEV_LDFLAGS) \
 	-module \
@@ -393,6 +407,9 @@ libmm_plugin_cinterion_la_CPPFLAGS = \
 	-I$(top_srcdir)/src
 
 libmm_plugin_cinterion_la_LDFLAGS = \
+=======
+libmm_plugin_samsung_lte_la_LDFLAGS = \
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
 	$(GUDEV_LDFLAGS) \
 	-module \
 	-avoid-version
@@ -403,7 +420,8 @@ udevrules_DATA = \
 	77-mm-zte-port-types.rules \
 	77-mm-longcheer-port-types.rules \
 	77-mm-simtech-port-types.rules \
-	77-mm-x22x-port-types.rules
+	77-mm-x22x-port-types.rules \
+	77-mm-samsung-lte.rules
 
 BUILT_SOURCES = \
 	mm-modem-gsm-hso-glue.h

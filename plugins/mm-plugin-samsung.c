@@ -13,6 +13,7 @@
  * Copyright (C) 2008 - 2009 Novell, Inc.
  * Copyright (C) 2009 - 2011 Red Hat, Inc.
  * Copyright (c) 2011 Samsung Electronics, Inc.,
+ * Copyright (C) 2011 - Marius Bjoernstad Kotsbak <marius@kotsbak.com>
  */
 
 #include <string.h>
@@ -22,6 +23,7 @@
 
 #include "mm-plugin-samsung.h"
 #include "mm-modem-samsung-gsm.h"
+#include "mm-modem-samsung-lte.h"
 
 G_DEFINE_TYPE (MMPluginSamsung, mm_plugin_samsung, MM_TYPE_PLUGIN_BASE)
 
@@ -65,6 +67,7 @@ supports_port (MMPluginBase *base,
                MMModem *existing,
                MMPluginBaseSupportsTask *task)
 {
+<<<<<<< HEAD
     GUdevDevice *port;
     const char *subsys, *name;
     guint16 vendor = 0, product = 0;
@@ -88,16 +91,64 @@ supports_port (MMPluginBase *base,
         return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
 
     /* The ethernet ports are obviously supported and don't need probing */
+=======
+    GUdevDevice *port, *physdev;
+    GUdevClient *client;
+    const char *sys[] = { "tty", "net", NULL };
+    guint32 cached = 0, level;
+    const char *driver, *subsys, *physdev_path;
+
+    /* Can't do anything with non-serial ports */
+    port = mm_plugin_base_supports_task_get_port (task);
+    if (!port)
+        return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+
+    driver = mm_plugin_base_supports_task_get_driver (task);
+    if (!driver)
+        return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+
+    client = g_udev_client_new (sys);
+    if (!client) {
+        g_warn_if_fail (client != NULL);
+        return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+    }
+    physdev_path = mm_plugin_base_supports_task_get_physdev_path (task);
+    physdev = g_udev_client_query_by_sysfs_path (client, physdev_path);
+    g_assert (physdev);
+
+    if (!g_udev_device_get_property_as_boolean (physdev, "ID_MM_SAMSUNG_LTE"))
+        return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+    g_object_unref (client);
+
+    subsys = g_udev_device_get_subsystem (port);
+    g_assert (subsys);
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
     if (!strcmp (subsys, "net")) {
         mm_plugin_base_supports_task_complete (task, 10);
         return MM_PLUGIN_SUPPORTS_PORT_IN_PROGRESS;
     }
+<<<<<<< HEAD
 
     /* Otherwise kick off a probe */
     if (mm_plugin_base_probe_port (base, task, 0, NULL))
         return MM_PLUGIN_SUPPORTS_PORT_IN_PROGRESS;
 
     return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+=======
+    else if (mm_plugin_base_get_cached_port_capabilities (base, port, &cached)) {
+        level = get_level_for_capabilities (cached);
+        if (level) {
+            mm_plugin_base_supports_task_complete (task, level);
+            return MM_PLUGIN_SUPPORTS_PORT_IN_PROGRESS;
+        }
+        else return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+    }
+
+    /* Otherwise kick off a probe */
+    if (mm_plugin_base_probe_port (base, task, NULL))
+        return MM_PLUGIN_SUPPORTS_PORT_IN_PROGRESS;
+    else return MM_PLUGIN_SUPPORTS_PORT_UNSUPPORTED;
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
 }
 
 static MMModem *
@@ -108,8 +159,15 @@ grab_port (MMPluginBase *base,
 {
     GUdevDevice *port = NULL;
     MMModem *modem = NULL;
+<<<<<<< HEAD
     guint32 caps;
     const char *name, *subsys, *sysfs_path;
+=======
+    const char *name, *subsys, *sysfs_path;
+    guint32 caps;
+    MMPortType ptype = MM_PORT_TYPE_UNKNOWN;
+    guint16 vendor = 0, product = 0;
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
 
     port = mm_plugin_base_supports_task_get_port (task);
     g_assert (port);
@@ -117,6 +175,7 @@ grab_port (MMPluginBase *base,
     subsys = g_udev_device_get_subsystem (port);
     name = g_udev_device_get_name (port);
 
+<<<<<<< HEAD
     caps = mm_plugin_base_supports_task_get_probed_capabilities (task);
     if (caps & CAP_CDMA) {
         g_set_error (error, 0, 0, "Only GSM modems are currently supported by this plugin.");
@@ -131,13 +190,35 @@ grab_port (MMPluginBase *base,
 
         if (modem) {
             if (!mm_modem_grab_port (modem, subsys, name, MM_PORT_TYPE_UNKNOWN, NULL, error)) {
+=======
+    if (!mm_plugin_base_get_device_ids (base, subsys, name, &vendor, &product)) {
+        g_set_error (error, 0, 0, "Could not get modem product ID.");
+        return NULL;
+    }
+
+    caps = mm_plugin_base_supports_task_get_probed_capabilities (task);
+    sysfs_path = mm_plugin_base_supports_task_get_physdev_path (task);
+    if (!existing) {
+        modem = mm_modem_samsung_lte_new (sysfs_path,
+                                          mm_plugin_base_supports_task_get_driver (task),
+                                          mm_plugin_get_name (MM_PLUGIN (base)),
+                                          vendor,
+                                          product);
+
+        if (modem) {
+            if (!mm_modem_grab_port (modem, subsys, name, ptype, NULL, error)) {
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
                 g_object_unref (modem);
                 return NULL;
             }
         }
     } else {
         modem = existing;
+<<<<<<< HEAD
         if (!mm_modem_grab_port (modem, subsys, name, MM_PORT_TYPE_UNKNOWN, NULL, error))
+=======
+        if (!mm_modem_grab_port (modem, subsys, name, ptype, NULL, error))
+>>>>>>> 8256b1b... Initial implementation of plugin for Samsung LTE modem.
             return NULL;
     }
 

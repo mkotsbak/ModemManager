@@ -13,6 +13,7 @@
  * Copyright (C) 2008 - 2009 Novell, Inc.
  * Copyright (C) 2009 Red Hat, Inc.
  * Copyright 2011 by Samsung Electronics, Inc.,
+ * Copyright (C) 2011 - Marius Bjoernstad Kotsbak <marius@kotsbak.com>
  */
 
 #ifndef MM_PLUGIN_SAMSUNG_H
